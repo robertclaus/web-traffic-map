@@ -1,5 +1,6 @@
 import streamlit as st # Data app/visualization framework
 import pydeck as pdk # Geomap plots that work with streamlit
+import altair as alt
 from monitor import get_ip_traffic
 
 if __name__ == '__main__':
@@ -33,13 +34,63 @@ if __name__ == '__main__':
             data=chart_data,
             get_source_position=['lon_src', 'lat_src'],
             get_target_position=['lon_dst', 'lat_dst'],
-            get_source_color=[0, 255, 0, 40],
-            get_target_color=[240, 100, 0, 40],
-            width='packets',
+            get_source_color=['direction === "Inbound" ? 255 : 0', 'direction === "Inbound" ? 0 : 255', 0, 80],
+            get_target_color=['direction === "Outbound" ? 255 : 0', 'direction === "Outbound" ? 0 : 255', 0, 80],
+            width=10,
             auto_highlight=True,
             ),
         ],
     ))
+
+    st.subheader('Summary Data')
+    col1, col2 = st.columns(2)
+
+    with col1:
+        c = (
+            alt.Chart(chart_data, 
+                    title=alt.TitleParams('Traffic Breakdown (bytes)', anchor='middle')
+            ).mark_arc(innerRadius=50).encode(
+                theta="total_size",
+                color="direction:N",
+                tooltip=['not_me_country', 'not_me_organization', 'ip_src', 'ip_dst', 'total_size', 'packets']
+            )
+        )
+        st.altair_chart(c, use_container_width=False)
+
+        c = (
+            alt.Chart(chart_data, 
+                    title=alt.TitleParams('Server Organization (bytes)', anchor='middle')
+            ).mark_arc(innerRadius=50).encode(
+                theta="total_size",
+                color="not_me_organization:N",
+                tooltip=['not_me_country', 'not_me_organization', 'ip_src', 'ip_dst', 'total_size', 'packets']
+            )
+        )
+        st.altair_chart(c, use_container_width=False)
+
+    with col2:
+        c = (
+            alt.Chart(chart_data, 
+                    title=alt.TitleParams('Server Country (packets)', anchor='middle')
+            ).mark_arc(innerRadius=50).encode(
+                theta="packets",
+                color="not_me_country:N",
+                tooltip=['not_me_country', 'not_me_organization', 'ip_src', 'ip_dst', 'total_size', 'packets']
+            )
+        )
+        st.altair_chart(c, use_container_width=False)
+
+        c = (
+            alt.Chart(chart_data, 
+                    title=alt.TitleParams('Total Size vs Packets', anchor='middle')
+            ).mark_circle(size=60).encode(
+                x='packets',
+                y='total_size',
+                color='not_me_organization',
+                tooltip=['not_me_country', 'not_me_organization', 'ip_src', 'ip_dst', 'total_size', 'packets']
+            )
+        )
+        st.altair_chart(c, use_container_width=False)
 
     st.subheader('Packet Data')
     st.dataframe(data=chart_data, use_container_width=True, hide_index=True)
